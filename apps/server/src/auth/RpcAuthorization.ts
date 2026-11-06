@@ -162,6 +162,10 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.assetsPersistChatAttachments]: AuthOrchestrationOperateScope,
   [WS_METHODS.attachmentsCreateUploadUrl]: AuthOrchestrationOperateScope,
   [WS_METHODS.attachmentsDelete]: AuthOrchestrationOperateScope,
+  // Dictation writes into a composer, so it needs the same scope as sending a message.
+  [WS_METHODS.voiceStatus]: AuthOrchestrationReadScope,
+  [WS_METHODS.voicePrepareModel]: AuthOrchestrationOperateScope,
+  [WS_METHODS.voiceCreateTranscribeUrl]: AuthOrchestrationOperateScope,
   [WS_METHODS.providerUploadFeedback]: AuthOrchestrationOperateScope,
   [WS_METHODS.mcpAppsCallTool]: AuthOrchestrationOperateScope,
   [WS_METHODS.mcpAppsToolInfo]: AuthOrchestrationReadScope,

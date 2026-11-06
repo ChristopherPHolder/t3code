@@ -17,11 +17,11 @@ import { getLocalVoiceTranscriber } from "../../native/voiceTranscription";
 import { mobilePreferencesAtom, updateMobilePreferencesAtom } from "../../state/preferences";
 import { getNativeShowcaseScene } from "../showcase/nativeShowcaseScene";
 import {
+  VOICE_WAVEFORM_SAMPLE_COUNT,
   voiceInputBlocksSubmission,
   type VoiceTranscriber,
 } from "@t3tools/client-runtime/voice-input";
 import { createLazyVoiceRecorder } from "./lazyVoiceRecorder";
-import { VOICE_WAVEFORM_SAMPLE_COUNT } from "./voiceInputMetering";
 import { VoiceInputSession } from "./voiceInputSession";
 import { createVoiceRecordingPermission } from "./voiceRecordingPermission";
 import { makePermissionStatusAtom } from "../../lib/permissionStatusAtom";

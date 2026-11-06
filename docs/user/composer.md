@@ -184,12 +184,34 @@ Stashes containing uploaded files must be restored in their original environment
 Those files are retained for 24 hours. After an upload expires, restore the prompt
 and use **Attach again** or remove the missing file before sending.
 
-## Voice input on mobile
+## Voice input
 
-On supported iPhones with iOS 26 or later and Android devices with Android 12 or
-later, use the composer's microphone to record, then confirm to transcribe. Text is
-inserted where your selection was when recording started, ready for you to review
-and edit before sending.
+Use the composer's microphone to speak a message instead of typing it. While
+recording, the composer shows discard and confirm controls; confirm to transcribe.
+Text is inserted where your selection was when recording started, ready for you to
+review and edit before sending. Sending is unavailable until you confirm or discard,
+so a transcript is never left behind.
+
+### On web and desktop
+
+Transcription runs on the machine running your T3 Code server, so audio never
+reaches a third party. That machine needs [whisper.cpp](https://github.com/ggml-org/whisper.cpp)
+installed: `brew install whisper-cpp` on macOS, or your platform's equivalent. When
+it is missing, the microphone button says so and names the command to run.
+
+The first recording downloads a speech model of about 150 MB to that machine and
+needs a network connection; later transcription works offline. Press `Escape` or
+the discard control to drop a recording without changing your draft. To use a
+different model, set `T3CODE_WHISPER_MODEL_NAME` (for example `ggml-small.en.bin`)
+on the server, or point `T3CODE_WHISPER_MODEL` at a model file you already have.
+
+When you connect to that server from another device, the recording uploads to it
+and is transcribed there. The audio is deleted once transcription finishes.
+
+### On mobile
+
+Voice input needs an iPhone running iOS 26 or later, or an Android device running
+Android 12 or later.
 
 Voice input uses on-device speech transcription: Apple's on iOS, and compatible
 Google speech services on Android. When it is unavailable for the device or its

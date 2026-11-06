@@ -203,6 +203,9 @@ import {
 } from "./ComposerAttachmentStrip";
 import { ComposerPrimaryActions } from "./ComposerPrimaryActions";
 import { ComposerFooterPrimaryActions } from "./ComposerFooterControls";
+import { ComposerDictationBar, ComposerDictationError } from "./ComposerDictationBar";
+import { ComposerVoiceButton } from "./ComposerVoiceButton";
+import { useVoiceInput } from "../../hooks/useVoiceInput";
 import { ComposerPendingUserInputPanel } from "./ComposerPendingUserInputPanel";
 import { ComposerPlanFollowUpBanner } from "./ComposerPlanFollowUpBanner";
 import { resolveComposerMenuActiveItemId } from "./composerMenuHighlight";
@@ -1271,6 +1274,29 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     setComposerDraftPrompt(composerDraftTarget, nextPrompt);
   };
 
+  const voiceInput = useVoiceInput({
+    environmentId,
+    ownerKey: composerDraftTargetKey,
+    readDraft: () => ({
+      ownerKey: composerDraftTargetKey,
+      text: promptRef.current,
+      selection: composerEditorRef.current?.readSelectionRange() ?? {
+        start: composerCursor,
+        end: composerCursor,
+      },
+      revision: 0,
+    }),
+    commitDraft: (text, selection) => {
+      promptRef.current = text;
+      setPrompt(text);
+      setComposerCursor(selection.end);
+      composerEditorRef.current?.focusAt(selection.end);
+    },
+    disabled: !canOperateThread || projectSelectionRequired,
+  });
+  const voiceSendDisabledReason = voiceInput.busy ? "Finish or discard the recording first." : null;
+  const voiceFooterPaddingClassName = cn("px-2 pb-2", pendingUserInputs.length > 0 && "pt-2");
+
   const addComposerImage = (image: ComposerImageAttachment) =>
     addComposerDraftImages(attachmentDraftTarget, [image]);
 
@@ -2071,6 +2097,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     if (
       noProviderAvailable ||
       isSendDisabled ||
+      // Sending mid-dictation would drop the transcript the agent is about to receive.
+      voiceInput.busy ||
       !readEnvironmentScope(environmentId, AuthOrchestrationOperateScope)
     ) {
       event?.preventDefault();
@@ -3449,7 +3477,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                       showPlanFollowUpPrompt={false}
                       promptHasText={false}
                       isSendBusy={isSendBusy}
-                      sendDisabledReason={sendDisabledReason}
+                      sendDisabledReason={voiceSendDisabledReason ?? sendDisabledReason}
                       isEnvironmentUnavailable={
                         environmentUnavailable !== null ||
                         noProviderAvailable ||
@@ -3471,91 +3499,128 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
               message={providerInputSubmissionError ?? composerSubmissionError}
             />
 
+            {voiceInput.state.phase === "error" && !isComposerCollapsedMobile ? (
+              <ComposerDictationError
+                error={voiceInput.state.error}
+                onDismiss={voiceInput.cancel}
+              />
+            ) : null}
             {isComposerCollapsedMobile ? null : (
               <div
                 data-chat-composer-footer="true"
                 className={cn(
-                  "flex min-w-0 flex-nowrap items-center overflow-visible px-2 pb-2",
-                  pendingUserInputs.length > 0 && "pt-2",
+                  "relative flex min-w-0 flex-nowrap items-center overflow-visible",
+                  voiceFooterPaddingClassName,
                   showMobilePendingAnswerActions && "hidden sm:flex",
                 )}
               >
-                {composerAttachButton ? <div className="me-2">{composerAttachButton}</div> : null}
+                {/* The controls stay mounted but hidden while dictating so their width measurement, and the collapse it drives, do not jump. */}
                 <div
-                  data-chat-composer-actions="right"
-                  data-chat-composer-transition-actions="true"
-                  data-chat-composer-primary-actions-compact={
-                    isComposerPrimaryActionsCompact ? "true" : "false"
-                  }
-                  className="flex min-w-0 flex-1 flex-nowrap items-center justify-end gap-2"
+                  className={cn("contents", voiceInput.busy && "invisible")}
+                  inert={voiceInput.busy ? true : undefined}
                 >
+                  {composerAttachButton ? <div className="me-2">{composerAttachButton}</div> : null}
                   <div
-                    ref={attachExpandedComposerControls}
-                    data-chat-composer-controls="footer"
-                    data-chat-composer-footer-controls="true"
-                    className="relative flex min-w-0 flex-1 items-center justify-end gap-0.5"
+                    data-chat-composer-actions="right"
+                    data-chat-composer-transition-actions="true"
+                    data-chat-composer-primary-actions-compact={
+                      isComposerPrimaryActionsCompact ? "true" : "false"
+                    }
+                    className="flex min-w-0 flex-1 flex-nowrap items-center justify-end gap-2"
                   >
-                    {composerControls}
-                  </div>
-                  <ComposerFooterPrimaryActions
-                    compact={isComposerPrimaryActionsCompact}
-                    canOperateThread={canOperateThread}
-                    activeContextWindow={
-                      settings.contextWindowMeterEnabled ? activeContextWindow : null
-                    }
-                    reserveContextWindowMeter={reserveContextWindowMeter}
-                    activeThreadModelDisplayName={activeThreadModelDisplayName}
-                    pendingAction={pendingPrimaryAction}
-                    isRunning={phase === "running"}
-                    canInterrupt={canInterrupt}
-                    followUpBehavior={followUpBehavior}
-                    canSteer={!isCompacting}
-                    alternateShortcutLabel={shortcutLabelForCommand(
-                      keybindings,
-                      "composer.sendAlternate",
-                      {
-                        context: {
-                          composerFocus: true,
-                          draftThreadRoute: routeKind === "draft",
-                          turnRunning: true,
-                          composerRequiresModifier: composerRequiresModifier(
-                            settings.sendShortcut,
-                            prompt,
-                          ),
+                    <div
+                      ref={attachExpandedComposerControls}
+                      data-chat-composer-controls="footer"
+                      data-chat-composer-footer-controls="true"
+                      className="relative flex min-w-0 flex-1 items-center justify-end gap-0.5"
+                    >
+                      {composerControls}
+                    </div>
+                    <ComposerFooterPrimaryActions
+                      voiceButton={
+                        !voiceInput.supported ? null : (
+                          <ComposerVoiceButton
+                            state={voiceInput.state}
+                            disabledReason={
+                              projectSelectionRequired
+                                ? "Choose a project before dictating"
+                                : canOperateThread
+                                  ? null
+                                  : "This thread is read-only"
+                            }
+                            onStart={voiceInput.start}
+                          />
+                        )
+                      }
+                      compact={isComposerPrimaryActionsCompact}
+                      canOperateThread={canOperateThread}
+                      activeContextWindow={
+                        settings.contextWindowMeterEnabled ? activeContextWindow : null
+                      }
+                      reserveContextWindowMeter={reserveContextWindowMeter}
+                      activeThreadModelDisplayName={activeThreadModelDisplayName}
+                      pendingAction={pendingPrimaryAction}
+                      isRunning={phase === "running"}
+                      canInterrupt={canInterrupt}
+                      followUpBehavior={followUpBehavior}
+                      canSteer={!isCompacting}
+                      alternateShortcutLabel={shortcutLabelForCommand(
+                        keybindings,
+                        "composer.sendAlternate",
+                        {
+                          context: {
+                            composerFocus: true,
+                            draftThreadRoute: routeKind === "draft",
+                            turnRunning: true,
+                            composerRequiresModifier: composerRequiresModifier(
+                              settings.sendShortcut,
+                              prompt,
+                            ),
+                          },
                         },
-                      },
-                    )}
-                    showPlanFollowUpPrompt={
-                      pendingUserInputs.length === 0 && showPlanFollowUpPrompt
-                    }
-                    promptHasText={prompt.trim().length > 0}
-                    isSendBusy={isSendBusy}
-                    sendDisabledReason={sendDisabledReason}
-                    isEnvironmentUnavailable={
-                      environmentUnavailable !== null ||
-                      noProviderAvailable ||
-                      projectSelectionRequired
-                    }
-                    isPreparingWorktree={isPreparingWorktree}
-                    hasSendableContent={composerSendState.hasSendableContent}
-                    canResume={showResumeAction}
-                    preserveComposerFocusOnPointerDown={isMobileViewport}
-                    isEditingQueuedMessage={isEditingQueuedMessage}
-                    onSubmitMessage={handleSubmitMessageStable}
-                    onResume={onResume}
-                    onPreviousPendingQuestion={onPreviousActivePendingUserInputQuestion}
-                    onInterrupt={handleInterruptPrimaryActionStable}
-                    onImplementPlanInNewThread={handleImplementPlanInNewThreadPrimaryActionStable}
-                    compactBeforeSendTokens={props.resumeCompactionTokens}
-                    keepFullHistory={props.keepFullHistory}
-                    onToggleKeepFullHistory={props.onToggleKeepFullHistory}
-                    compactDisabled={compactDisabled || noProviderAvailable || isSendBusy}
-                    compactDisabledReason={resolvedCompactDisabledReason}
-                    {...(compactCommandAvailable
-                      ? { onCompactContext: compactThreadContextStable }
-                      : {})}
-                  />
+                      )}
+                      showPlanFollowUpPrompt={
+                        pendingUserInputs.length === 0 && showPlanFollowUpPrompt
+                      }
+                      promptHasText={prompt.trim().length > 0}
+                      isSendBusy={isSendBusy}
+                      sendDisabledReason={voiceSendDisabledReason ?? sendDisabledReason}
+                      isEnvironmentUnavailable={
+                        environmentUnavailable !== null ||
+                        noProviderAvailable ||
+                        projectSelectionRequired
+                      }
+                      isPreparingWorktree={isPreparingWorktree}
+                      hasSendableContent={composerSendState.hasSendableContent}
+                      canResume={showResumeAction}
+                      preserveComposerFocusOnPointerDown={isMobileViewport}
+                      isEditingQueuedMessage={isEditingQueuedMessage}
+                      onSubmitMessage={handleSubmitMessageStable}
+                      onResume={onResume}
+                      onPreviousPendingQuestion={onPreviousActivePendingUserInputQuestion}
+                      onInterrupt={handleInterruptPrimaryActionStable}
+                      onImplementPlanInNewThread={handleImplementPlanInNewThreadPrimaryActionStable}
+                      compactBeforeSendTokens={props.resumeCompactionTokens}
+                      keepFullHistory={props.keepFullHistory}
+                      onToggleKeepFullHistory={props.onToggleKeepFullHistory}
+                      compactDisabled={compactDisabled || noProviderAvailable || isSendBusy}
+                      compactDisabledReason={resolvedCompactDisabledReason}
+                      {...(compactCommandAvailable
+                        ? { onCompactContext: compactThreadContextStable }
+                        : {})}
+                    />
+                  </div>
                 </div>
+                {voiceInput.busy ? (
+                  <ComposerDictationBar
+                    state={voiceInput.state}
+                    elapsedSeconds={voiceInput.elapsedSeconds}
+                    levels={voiceInput.levels}
+                    className={cn("absolute inset-0", voiceFooterPaddingClassName)}
+                    onStop={voiceInput.stop}
+                    onCancel={voiceInput.cancel}
+                  />
+                ) : null}
               </div>
             )}
             {showInlineRestingControls ? (

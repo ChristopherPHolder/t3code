@@ -1,4 +1,8 @@
-import type { VoiceInputPhase, VoiceInputState } from "@t3tools/client-runtime/voice-input";
+import {
+  VOICE_WAVEFORM_SAMPLE_COUNT,
+  type VoiceInputPhase,
+  type VoiceInputState,
+} from "@t3tools/client-runtime/voice-input";
 import { memo, useState, type ReactNode } from "react";
 import { Linking, Pressable, Text as SystemText, View, type LayoutChangeEvent } from "react-native";
 import Animated, {
@@ -18,7 +22,6 @@ import { SymbolView, type AppSymbolName } from "../../components/ui/AppSymbol";
 import { useAndroidControlSizing } from "../../components/ui/useAndroidControlSizing";
 import { cn } from "../../lib/cn";
 import type { VoiceComposerPresentation } from "./voiceInputPresentation";
-import { VOICE_WAVEFORM_SAMPLE_COUNT } from "./voiceInputMetering";
 
 const DICTATION_TIMING = {
   duration: 220,

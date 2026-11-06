@@ -3,6 +3,7 @@ import {
   AuthOrchestrationOperateScope,
   AuthOrchestrationReadScope,
   EnvironmentHttpApi,
+  VOICE_TRANSCRIBE_ROUTE_PREFIX,
 } from "@t3tools/contracts";
 import { isDevProxiedPath } from "@t3tools/shared/devProxy";
 import { injectMcpAppCookieBootstrap, injectMcpAppThemeBootstrap } from "@t3tools/shared/mcpApp";
@@ -37,6 +38,8 @@ import {
   storeAttachmentUpload,
   validateAttachmentUploadToken,
 } from "./assets/AttachmentUpload.ts";
+import { validateVoiceTranscribeToken } from "./voice/VoiceTranscribeUrl.ts";
+import { VoiceTranscription } from "./voice/VoiceTranscription.ts";
 import * as BrowserTraceCollector from "./observability/BrowserTraceCollector.ts";
 import * as EnvironmentAuth from "./auth/EnvironmentAuth.ts";
 import { traceRelayRequest } from "./cloud/traceRelayRequest.ts";
@@ -497,6 +500,54 @@ export const layerAttachmentUploadRoute = HttpRouter.add(
     return stored.ok
       ? HttpServerResponse.empty({ status: 204 })
       : HttpServerResponse.text(stored.detail, { status: stored.status });
+  }),
+);
+
+export const layerVoiceTranscribeRoute = HttpRouter.add(
+  "POST",
+  `${VOICE_TRANSCRIBE_ROUTE_PREFIX}/*`,
+  Effect.gen(function* () {
+    const request = yield* HttpServerRequest.HttpServerRequest;
+    const url = requestUrl(request);
+    if (Option.isNone(url)) {
+      return HttpServerResponse.text("Bad Request", { status: 400 });
+    }
+
+    const token = url.value.pathname.slice(`${VOICE_TRANSCRIBE_ROUTE_PREFIX}/`.length);
+    if (!token) {
+      return HttpServerResponse.text("Not Found", { status: 404 });
+    }
+    const claims = yield* validateVoiceTranscribeToken(token);
+    if (!claims) {
+      return HttpServerResponse.text("Not Found", { status: 404 });
+    }
+
+    const contentLengthHeader = request.headers["content-length"];
+    if (
+      contentLengthHeader !== undefined &&
+      (!Number.isInteger(Number(contentLengthHeader)) ||
+        Number(contentLengthHeader) !== claims.sizeBytes)
+    ) {
+      return HttpServerResponse.text("Content-Length must match the recording size.", {
+        status: 400,
+      });
+    }
+
+    const audio = yield* request.arrayBuffer.pipe(
+      Effect.map((buffer) => new Uint8Array(buffer)),
+      Effect.orElseSucceed(() => null),
+    );
+    if (audio === null || audio.byteLength !== claims.sizeBytes) {
+      return HttpServerResponse.text("The recording did not match its declared size.", {
+        status: 400,
+      });
+    }
+
+    const voice = yield* VoiceTranscription;
+    const result = yield* voice.transcribe(audio);
+    return "status" in result
+      ? HttpServerResponse.text(result.detail, { status: result.status })
+      : yield* HttpServerResponse.json({ text: result.text });
   }),
 );
 

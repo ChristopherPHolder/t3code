@@ -1,14 +1,14 @@
 import {
   VOICE_RECORDING_LIMIT_SECONDS,
+  VOICE_WAVEFORM_SAMPLE_COUNT,
   VoiceInputController,
+  normalizeVoiceInputDecibels,
   voiceInputBlocksSubmission,
   type VoiceDraftSnapshot,
   type VoiceInputControllerDependencies,
   type VoiceInputPhase,
   type VoiceInputState,
 } from "@t3tools/client-runtime/voice-input";
-
-import { normalizeVoiceInputDecibels, VOICE_WAVEFORM_SAMPLE_COUNT } from "./voiceInputMetering";
 
 const VOICE_METERING_INTERVAL_MS = 80;
 const IDLE_STATE: VoiceInputState = { phase: "idle", error: null, errorAction: null };

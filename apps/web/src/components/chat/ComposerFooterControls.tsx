@@ -284,6 +284,8 @@ export const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryA
   compactBeforeSendTokens: number | null;
   keepFullHistory: boolean;
   onToggleKeepFullHistory: () => void;
+  /** The dictation control, owned by ChatComposer so this stays presentational. */
+  voiceButton?: React.ReactNode;
 }) {
   return (
     <>
@@ -298,6 +300,7 @@ export const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryA
       ) : props.reserveContextWindowMeter ? (
         <ContextWindowMeterPlaceholder />
       ) : null}
+      {props.voiceButton}
       <ComposerPrimaryActions
         compact={props.compact}
         canOperateThread={props.canOperateThread}

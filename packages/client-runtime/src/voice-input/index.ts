@@ -17,3 +17,4 @@ export {
   type VoiceTranscriptionErrorCode,
   type VoiceTranscriptionOptions,
 } from "./transcription.ts";
+export { VOICE_WAVEFORM_SAMPLE_COUNT, normalizeVoiceInputDecibels } from "./metering.ts";

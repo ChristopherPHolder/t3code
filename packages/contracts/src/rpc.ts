@@ -108,6 +108,14 @@ import {
   AttachmentUploadSigningKeyError,
 } from "./assets.ts";
 import {
+  VoiceCreateTranscribeUrlInput,
+  VoiceCreateTranscribeUrlResult,
+  VoiceModelDownloadError,
+  VoicePrepareModelResult,
+  VoiceStatusResult,
+  VoiceTranscribeSigningKeyError,
+} from "./voice.ts";
+import {
   PersistChatAttachmentsError,
   PersistChatAttachmentsInput,
   PersistChatAttachmentsResult,
@@ -427,6 +435,10 @@ export const WS_METHODS = {
   assetsPersistChatAttachments: "assets.persistChatAttachments",
   attachmentsCreateUploadUrl: "attachments.createUploadUrl",
   attachmentsDelete: "attachments.delete",
+
+  voiceStatus: "voice.status",
+  voicePrepareModel: "voice.prepareModel",
+  voiceCreateTranscribeUrl: "voice.createTranscribeUrl",
 
   mcpAppsCallTool: "mcpApps.callTool",
   mcpAppsToolInfo: "mcpApps.toolInfo",
@@ -1413,6 +1425,22 @@ const WsAttachmentsDeleteRpc = Rpc.make(WS_METHODS.attachmentsDelete, {
   error: EnvironmentAuthorizationError,
 });
 
+const WsVoiceStatusRpc = Rpc.make(WS_METHODS.voiceStatus, {
+  success: VoiceStatusResult,
+  error: EnvironmentAuthorizationError,
+});
+
+const WsVoicePrepareModelRpc = Rpc.make(WS_METHODS.voicePrepareModel, {
+  success: VoicePrepareModelResult,
+  error: Schema.Union([VoiceModelDownloadError, EnvironmentAuthorizationError]),
+});
+
+const WsVoiceCreateTranscribeUrlRpc = Rpc.make(WS_METHODS.voiceCreateTranscribeUrl, {
+  payload: VoiceCreateTranscribeUrlInput,
+  success: VoiceCreateTranscribeUrlResult,
+  error: Schema.Union([VoiceTranscribeSigningKeyError, EnvironmentAuthorizationError]),
+});
+
 const WsMcpAppsCallToolRpc = Rpc.make(WS_METHODS.mcpAppsCallTool, {
   payload: McpAppCallToolInput,
   success: McpAppCallToolResult,
@@ -2128,6 +2156,9 @@ export const WsRpcGroup = RpcGroup.make(
   WsAssetsPersistChatAttachmentsRpc,
   WsAttachmentsCreateUploadUrlRpc,
   WsAttachmentsDeleteRpc,
+  WsVoiceStatusRpc,
+  WsVoicePrepareModelRpc,
+  WsVoiceCreateTranscribeUrlRpc,
   WsMcpAppsCallToolRpc,
   WsMcpAppsToolInfoRpc,
   WsMcpAppsReadResourceRpc,
